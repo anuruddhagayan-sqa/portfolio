@@ -99,17 +99,17 @@ function setupActiveLink() {
   document.querySelectorAll("main section[id]").forEach(s => obs.observe(s));
 }
 
-// Contact form: client-side validation and feedback.
-// To actually send messages, replace the marked line with a fetch() to a form service (e.g. Formspree).
+// Contact form: client-side validation and Web3Forms delivery.
 function setupForm() {
   const form = document.getElementById("contact-form");
   const status = document.getElementById("form-status");
+  const submitBtn = form.querySelector('button[type="submit"]');
   const rules = {
     name: v => v.trim().length >= 2 || "Enter your name.",
     email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || "Enter a valid email address.",
     message: v => v.trim().length >= 10 || "Write at least 10 characters."
   };
-  form.addEventListener("submit", e => {
+  form.addEventListener("submit", async e => {
     e.preventDefault();
     let ok = true;
     Object.keys(rules).forEach(f => {
@@ -121,10 +121,31 @@ function setupForm() {
     });
     status.className = "status";
     if (!ok) { status.textContent = "Please fix the highlighted fields."; return; }
-    // --- Replace this block with a real submission (fetch to a form service) ---
-    status.textContent = "Thanks! Your message is ready to send. Connect a form service in script.js to deliver it.";
-    status.classList.add("ok");
-    form.reset();
+
+    status.textContent = "Sending message...";
+    if (submitBtn) submitBtn.disabled = true;
+
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        status.textContent = "Thanks! Your message has been sent.";
+        status.classList.add("ok");
+        form.reset();
+      } else {
+        status.textContent = data.message || "Could not send message. Please try again.";
+      }
+    } catch (err) {
+      status.textContent = "Network error. Please email directly instead.";
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
   });
 }
 
